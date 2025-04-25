@@ -14,4 +14,9 @@ Key Features:
 	•	Capable of generating $500+ weekly with strategic use
 
 Whether you’re aiming for passive income or aggressive growth, the PocketOptionGuru Bot is your ultimate trading partner.
-http://t.me/Xperrt_bot GET YOUR BOT HERE AND RUN IT
+POCKET OPTION BOT 
+http://t.me/Xperrt_bot           GET YOUR BOT HERE AND RUN IT		
+INFORMATION
+po_bot.py - Martingale trading. The default strategy is pretty simple. If the previous candles are red, the bot makes 'put' order. And 'call' otherwise. You can see a current Martingale stack in the console (Martingale stack). For example, Martingale stack [1, 3, 7, 15, 31, 62, 124, 249, 499, 999] means that if you order $1 and lose, the next order will be $3, then $7, and so on. You can change MARTINGALE_COEFFICIENT. !Important. Your timeframe always must be >= estimation. For example, if your timeframe is 10s, your estimation can't be 11s and higher.
+
+
