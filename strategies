@@ -1,0 +1,13 @@
+import pandas as pd
+from strategies.simple_strategy import simple_strategy
+
+# Load historical data
+data = pd.read_csv('data/sample_data.csv')
+
+# Apply strategy
+results = simple_strategy(data)
+
+# Display results
+print("Win Rate:", results['win_rate'], "%")
+print("Total Trades:", results['total_trades'])
+print("Net Profit:", results['net_profit'])
