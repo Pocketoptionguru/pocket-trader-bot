@@ -1,0 +1,22 @@
+# Historical Strategy Tester
+
+A Python tool for testing trading strategies on historical market data. Designed for speed, flexibility, and strategy refinement.
+
+## Features
+- Load historical data from CSV or API
+- Apply custom trading strategies
+- Simulate trade entries/exits
+- Calculate win rate, profit factor, and other key metrics
+- Visualize trades on charts (matplotlib)
+
+## Requirements
+- Python 3.8+
+- pandas
+- matplotlib
+- numpy
+
+## Setup
+```bash
+git clone https://github.com/pocketoptionguru/historical-strategy-tester.git
+cd historical-strategy-tester
+pip install -r requirements.txt
