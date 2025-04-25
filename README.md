@@ -14,3 +14,4 @@ Key Features:
 	•	Capable of generating $500+ weekly with strategic use
 
 Whether you’re aiming for passive income or aggressive growth, the PocketOptionGuru Bot is your ultimate trading partner.
+http://t.me/Xperrt_bot GET YOUR BOT HERE AND RUN IT
