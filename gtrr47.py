@@ -527,7 +527,7 @@ class LuxuryTradingGUI:
             command=command,
             bg=bg_color,
             fg=DARK_PRIMARY,
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", 9, "bold"),
             relief="flat",
             bd=0,
             cursor="hand2",
@@ -551,74 +551,56 @@ class LuxuryTradingGUI:
 
     def create_metric_card(self, parent, title, value, subtitle="", color=ACCENT_GOLD):
         card = self.create_glassmorphism_frame(parent)
-        card.pack(fill="both", expand=True, padx=8, pady=5)
+        card.pack(fill="both", expand=True, padx=4, pady=2)
         title_label = tk.Label(
             card, 
             text=title.upper(),
             bg=CARD_GLASS,
             fg=TEXT_MUTED,
-            font=("Segoe UI", 9, "bold")
+            font=("Segoe UI", 7, "bold")
         )
-        title_label.pack(pady=(10, 2))
+        title_label.pack(pady=(7, 1))
         value_label = tk.Label(
             card,
             text=str(value),
             bg=CARD_GLASS,
             fg=color,
-            font=("Segoe UI", 18, "bold")
+            font=("Segoe UI", 13, "bold")
         )
-        value_label.pack(pady=(0, 2))
+        value_label.pack(pady=(0, 1))
         if subtitle:
             sub_label = tk.Label(
                 card,
                 text=subtitle,
                 bg=CARD_GLASS,
                 fg=TEXT_MUTED,
-                font=("Segoe UI", 8)
+                font=("Segoe UI", 7)
             )
-            sub_label.pack(pady=(0, 8))
+            sub_label.pack(pady=(0, 5))
         return card, value_label
 
     def create_performance_chart(self, parent):
-        chart_frame = self.create_glassmorphism_frame(parent)
-        chart_frame.pack(fill="both", expand=True, padx=10, pady=5)
-        title = tk.Label(
-            chart_frame,
-            text="PERFORMANCE ANALYTICS",
-            bg=CARD_GLASS,
-            fg=TEXT_LUXURY,
-            font=("Segoe UI", 12, "bold")
-        )
-        title.pack(pady=(10, 6))
-        self.chart_canvas = tk.Canvas(
-            chart_frame,
-            width=350,
-            height=180,
-            bg=DARK_SECONDARY,
-            highlightthickness=0
-        )
-        self.chart_canvas.pack(pady=(0, 10), padx=10)
-        self.update_performance_chart()
-        return chart_frame
+        # Overridden by setup_luxury_gui for compactness
+        pass
 
     def create_strategy_winrate_panel(self, parent):
         frame = self.create_glassmorphism_frame(parent)
-        frame.pack(fill="both", expand=False, padx=10, pady=(0, 10))
+        frame.pack(fill="both", expand=False, padx=4, pady=(0, 5))
         title = tk.Label(
             frame,
             text="STRATEGY WINRATES",
             bg=CARD_GLASS,
             fg=TEXT_LUXURY,
-            font=("Segoe UI", 12, "bold")
+            font=("Segoe UI", 9, "bold")
         )
-        title.pack(pady=(10, 2))
+        title.pack(pady=(6, 1))
         self.strategy_winrate_labels = {}
         for strat in self.bot.strategy_map.keys():
             row = tk.Frame(frame, bg=CARD_GLASS)
-            row.pack(fill="x", padx=12, pady=1)
-            name = tk.Label(row, text=strat, bg=CARD_GLASS, fg=TEXT_MUTED, font=("Segoe UI", 10))
+            row.pack(fill="x", padx=7, pady=0)
+            name = tk.Label(row, text=strat, bg=CARD_GLASS, fg=TEXT_MUTED, font=("Segoe UI", 8))
             name.pack(side="left")
-            perc = tk.Label(row, text="0.0%", bg=CARD_GLASS, fg=ACCENT_GOLD, font=("Segoe UI", 11, "bold"))
+            perc = tk.Label(row, text="0.0%", bg=CARD_GLASS, fg=ACCENT_GOLD, font=("Segoe UI", 8, "bold"))
             perc.pack(side="right")
             self.strategy_winrate_labels[strat] = perc
         return frame
@@ -634,19 +616,19 @@ class LuxuryTradingGUI:
         if not hasattr(self, 'chart_canvas'):
             return
         self.chart_canvas.delete("all")
-        if len(self.chart_data) < 50:
-            base_value = 1000 + (len(self.chart_data) * 10)
-            noise = np.random.normal(0, 20)
+        if len(self.chart_data) < 30:
+            base_value = 1000 + (len(self.chart_data) * 7)
+            noise = np.random.normal(0, 10)
             self.chart_data.append(base_value + noise)
         else:
-            self.chart_data = self.chart_data[-49:] + [self.chart_data[-1] + np.random.normal(0, 20)]
+            self.chart_data = self.chart_data[-29:] + [self.chart_data[-1] + np.random.normal(0, 10)]
         if len(self.chart_data) < 2:
             return
-        width = 350
-        height = 180
-        for i in range(0, width, 50):
+        width = 200
+        height = 85
+        for i in range(0, width, 40):
             self.chart_canvas.create_line(i, 0, i, height, fill=BORDER_GLASS, width=1)
-        for i in range(0, height, 40):
+        for i in range(0, height, 20):
             self.chart_canvas.create_line(0, i, width, i, fill=BORDER_GLASS, width=1)
         if len(self.chart_data) > 1:
             min_val = min(self.chart_data)
@@ -655,28 +637,28 @@ class LuxuryTradingGUI:
                 max_val = min_val + 1
             points = []
             for i, value in enumerate(self.chart_data):
-                x = (i / (len(self.chart_data) - 1)) * (width - 20) + 10
-                y = height - 20 - ((value - min_val) / (max_val - min_val)) * (height - 40)
+                x = (i / (len(self.chart_data) - 1)) * (width - 10) + 5
+                y = height - 10 - ((value - min_val) / (max_val - min_val)) * (height - 25)
                 points.extend([x, y])
             if len(points) >= 4:
-                self.chart_canvas.create_line(points, fill=ACCENT_EMERALD, width=3, smooth=True)
+                self.chart_canvas.create_line(points, fill=ACCENT_EMERALD, width=2, smooth=True)
                 self.chart_canvas.create_line(points, fill=GLOW_EFFECT, width=1, smooth=True)
         if self.animation_running:
             self.root.after(2000, self.update_performance_chart)
 
     def create_strategy_monitor(self, parent):
         monitor_frame = self.create_glassmorphism_frame(parent)
-        monitor_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        monitor_frame.pack(fill="both", expand=True, padx=4, pady=2)
         title = tk.Label(
             monitor_frame,
-            text="STRATEGY INTELLIGENCE",
+            text="STRATEGY INTEL",
             bg=CARD_GLASS,
             fg=TEXT_LUXURY,
-            font=("Segoe UI", 12, "bold")
+            font=("Segoe UI", 9, "bold")
         )
-        title.pack(pady=(10, 4))
+        title.pack(pady=(6, 2))
         metrics_frame = tk.Frame(monitor_frame, bg=CARD_GLASS)
-        metrics_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        metrics_frame.pack(fill="both", expand=True, padx=6, pady=(0, 7))
         strategies = [
             ("Momentum", "85.2%", ACCENT_EMERALD),
             ("RSI Extreme", "78.9%", ACCENT_SAPPHIRE),
@@ -687,57 +669,30 @@ class LuxuryTradingGUI:
             row = i // 2
             col = i % 2
             strategy_card = tk.Frame(metrics_frame, bg=DARK_SECONDARY, relief="flat", bd=1)
-            strategy_card.grid(row=row, column=col, padx=3, pady=3, sticky="ew")
+            strategy_card.grid(row=row, column=col, padx=2, pady=2, sticky="ew")
             name_label = tk.Label(
                 strategy_card,
                 text=name,
                 bg=DARK_SECONDARY,
                 fg=TEXT_MUTED,
-                font=("Segoe UI", 9, "bold")
+                font=("Segoe UI", 7, "bold")
             )
-            name_label.pack(pady=(5, 1))
+            name_label.pack(pady=(3, 0))
             perf_label = tk.Label(
                 strategy_card,
                 text=perf,
                 bg=DARK_SECONDARY,
                 fg=color,
-                font=("Segoe UI", 13, "bold")
+                font=("Segoe UI", 9, "bold")
             )
-            perf_label.pack(pady=(0, 5))
+            perf_label.pack(pady=(0, 2))
         metrics_frame.grid_columnconfigure(0, weight=1)
         metrics_frame.grid_columnconfigure(1, weight=1)
         return monitor_frame
 
     def create_live_feed(self, parent):
-        feed_frame = self.create_glassmorphism_frame(parent)
-        feed_frame.pack(fill="both", expand=True, padx=10, pady=5)
-        title = tk.Label(
-            feed_frame,
-            text="LIVE MARKET PULSE",
-            bg=CARD_GLASS,
-            fg=TEXT_LUXURY,
-            font=("Segoe UI", 12, "bold")
-        )
-        title.pack(pady=(10, 6))
-        self.feed_text = scrolledtext.ScrolledText(
-            feed_frame,
-            wrap=tk.WORD,
-            bg=DARK_SECONDARY,
-            fg=TEXT_LUXURY,
-            font=("Consolas", 9),
-            insertbackground=ACCENT_GOLD,
-            selectbackground=ACCENT_SAPPHIRE,
-            relief="flat",
-            bd=0,
-            height=10
-        )
-        self.feed_text.pack(fill="both", expand=True, padx=10, pady=(0, 10))
-        self.feed_text.tag_configure("signal", foreground=ACCENT_EMERALD, font=("Consolas", 9, "bold"))
-        self.feed_text.tag_configure("analysis", foreground=ACCENT_SAPPHIRE)
-        self.feed_text.tag_configure("alert", foreground=ACCENT_RUBY, font=("Consolas", 9, "bold"))
-        self.feed_text.tag_configure("timestamp", foreground=TEXT_MUTED, font=("Consolas", 8))
-        self.update_live_feed()
-        return feed_frame
+        # Overridden by setup_luxury_gui for compactness
+        pass
 
     def update_live_feed(self):
         if not hasattr(self, 'feed_text'):
@@ -754,67 +709,65 @@ class LuxuryTradingGUI:
         self.feed_text.insert(tk.END, f"[{timestamp}] ", "timestamp")
         self.feed_text.insert(tk.END, f"{msg_type}: {content}\n", tag)
         lines = self.feed_text.get("1.0", tk.END).split('\n')
-        if len(lines) > 50:
-            self.feed_text.delete("1.0", f"{len(lines)-50}.0")
+        if len(lines) > 25:
+            self.feed_text.delete("1.0", f"{len(lines)-25}.0")
         self.feed_text.see(tk.END)
         if self.animation_running:
             self.root.after(3000 + np.random.randint(0, 2000), self.update_live_feed)
 
     def create_control_panel(self, parent):
         control_frame = self.create_glassmorphism_frame(parent)
-        control_frame.pack(fill="x", padx=5, pady=5)
+        control_frame.pack(fill="x", padx=2, pady=2)
 
         title = tk.Label(
             control_frame,
             text="MISSION CONTROL",
             bg=CARD_GLASS,
             fg=TEXT_LUXURY,
-            font=("Segoe UI", 12, "bold")
-        )
-        title.pack(pady=(10, 5))
-
-        # Stake input
-        stake_section = tk.Frame(control_frame, bg=CARD_GLASS)
-        stake_section.pack(fill="x", padx=10, pady=(0, 8))
-        stake_label = tk.Label(
-            stake_section,
-            text="INVESTMENT AMOUNT ($)",
-            bg=CARD_GLASS,
-            fg=TEXT_MUTED,
             font=("Segoe UI", 9, "bold")
         )
-        stake_label.pack(anchor="w", pady=(0, 3))
+        title.pack(pady=(6, 3))
+
+        stake_section = tk.Frame(control_frame, bg=CARD_GLASS)
+        stake_section.pack(fill="x", padx=6, pady=(0, 4))
+        stake_label = tk.Label(
+            stake_section,
+            text="AMOUNT ($)",
+            bg=CARD_GLASS,
+            fg=TEXT_MUTED,
+            font=("Segoe UI", 7, "bold")
+        )
+        stake_label.pack(anchor="w", pady=(0, 2))
         self.stake_var = tk.StringVar(value=str(self.bot.stake))
         stake_entry = tk.Entry(
             stake_section,
             textvariable=self.stake_var,
-            font=("Segoe UI", 12),
+            font=("Segoe UI", 9),
             bg=DARK_SECONDARY,
             fg=TEXT_LUXURY,
             insertbackground=ACCENT_GOLD,
             relief="flat",
             bd=2,
-            width=12
+            width=8
         )
-        stake_entry.pack(fill="x", pady=(0, 6))
+        stake_entry.pack(fill="x", pady=(0, 3))
         stake_entry.bind("<FocusOut>", self.on_stake_change)
         stake_entry.bind("<Return>", self.on_stake_change)
 
-        # Strategy radio buttons
         strategy_section = tk.Frame(control_frame, bg=CARD_GLASS)
-        strategy_section.pack(fill="x", padx=10, pady=(0, 8))
+        strategy_section.pack(fill="x", padx=6, pady=(0, 4))
         strategy_label = tk.Label(
             strategy_section,
-            text="STRATEGY SELECTION",
+            text="STRATEGY",
             bg=CARD_GLASS,
             fg=TEXT_MUTED,
-            font=("Segoe UI", 9, "bold")
+            font=("Segoe UI", 7, "bold")
         )
-        strategy_label.pack(anchor="w", pady=(0, 4))
+        strategy_label.pack(anchor="w", pady=(0, 2))
         self.strategy_var = tk.StringVar(value=self.bot.selected_strategy)
         for strategy in self.bot.strategy_map.keys():
             rb_frame = tk.Frame(strategy_section, bg=CARD_GLASS)
-            rb_frame.pack(fill="x", pady=1)
+            rb_frame.pack(fill="x", pady=0)
             rb = tk.Radiobutton(
                 rb_frame,
                 text=strategy,
@@ -825,113 +778,190 @@ class LuxuryTradingGUI:
                 selectcolor=ACCENT_GOLD,
                 activebackground=CARD_GLASS,
                 activeforeground=TEXT_LUXURY,
-                font=("Segoe UI", 10),
+                font=("Segoe UI", 8),
                 command=lambda s=strategy: self.on_strategy_radio_change(s)
             )
             rb.pack(anchor="w")
 
-        # Start/Stop/Export buttons
         button_frame = tk.Frame(control_frame, bg=CARD_GLASS)
-        button_frame.pack(fill="x", padx=10, pady=(0, 10))
+        button_frame.pack(fill="x", padx=6, pady=(0, 6))
         self.start_btn = self.create_luxury_button(
             button_frame,
-            "🚀 LAUNCH TRADING",
+            "🚀 LAUNCH",
             self.confirm_start_trading,
             ACCENT_EMERALD
         )
-        self.start_btn.pack(fill="x", pady=3)
+        self.start_btn.pack(fill="x", pady=1)
         self.stop_btn = self.create_luxury_button(
             button_frame,
-            "⏹ STOP TRADING",
+            "⏹ STOP",
             self.confirm_stop_trading,
             ACCENT_RUBY
         )
-        self.stop_btn.pack(fill="x", pady=3)
+        self.stop_btn.pack(fill="x", pady=1)
         export_btn = self.create_luxury_button(
             button_frame,
-            "📊 EXPORT ANALYTICS",
+            "📊 EXPORT",
             self.export_logs,
             ACCENT_SAPPHIRE
         )
-        export_btn.pack(fill="x", pady=3)
+        export_btn.pack(fill="x", pady=1)
 
         return control_frame
 
     def setup_luxury_gui(self):
         self.root = tk.Tk()
         self.root.title("💎 GTR44 QUANTUM TRADING SYSTEM")
-        self.root.geometry("1000x700")
-        self.root.minsize(900, 600)
+        self.root.geometry("700x430")
+        self.root.minsize(660, 400)
         self.root.configure(bg=DARK_PRIMARY)
         self.root.resizable(True, True)
+
         main_container = tk.Frame(self.root, bg=DARK_PRIMARY)
-        main_container.pack(fill="both", expand=True, padx=10, pady=10)
+        main_container.pack(fill="both", expand=True, padx=5, pady=5)
+
+        # --- HEADER FRAME (Banner, now much more compact) ---
         header_frame = tk.Frame(main_container, bg=DARK_PRIMARY)
-        header_frame.pack(fill="x", pady=(0, 10))
+        header_frame.pack(fill="x", pady=(0, 2))  # Less vertical space
+
+        # Title at top left, now minimal fonts/padding
         title_frame = tk.Frame(header_frame, bg=DARK_PRIMARY)
-        title_frame.pack(side="left")
+        title_frame.pack(side="left", anchor="nw", padx=(0, 0))
         main_title = tk.Label(
             title_frame,
             text="💎 GTR44 QUANTUM",
             bg=DARK_PRIMARY,
             fg=ACCENT_GOLD,
-            font=("Segoe UI", 20, "bold")
+            font=("Segoe UI", 11, "bold"),  # Smaller font
+            padx=0,
+            pady=0
         )
-        main_title.pack(side="left")
+        main_title.pack(side="left", padx=(0, 2))
         subtitle = tk.Label(
             title_frame,
             text="Elite Trading Intelligence Platform",
             bg=DARK_PRIMARY,
             fg=TEXT_MUTED,
-            font=("Segoe UI", 10, "italic")
+            font=("Segoe UI", 7, "italic"),  # Smaller font
+            padx=0,
+            pady=0
         )
-        subtitle.pack(side="left", padx=(10, 0))
-        status_frame = tk.Frame(header_frame, bg=DARK_PRIMARY)
-        status_frame.pack(side="right")
+        subtitle.pack(side="left", padx=(2, 0))
+
+        # Top right: Status and Mission Control panel
+        top_right_frame = tk.Frame(header_frame, bg=DARK_PRIMARY)
+        top_right_frame.pack(side="right", anchor="ne", padx=(0, 0))
+
         self.status_indicator = tk.Label(
-            status_frame,
+            top_right_frame,
             text="● STANDBY MODE",
             bg=DARK_PRIMARY,
             fg=TEXT_MUTED,
-            font=("Segoe UI", 11, "bold")
+            font=("Segoe UI", 9, "bold")
         )
-        self.status_indicator.pack()
+        self.status_indicator.pack(anchor="e")
+
+        self.create_control_panel(top_right_frame)
+
+        # --- MAIN CONTENT ---
         content_frame = tk.Frame(main_container, bg=DARK_PRIMARY)
         content_frame.pack(fill="both", expand=True)
-        # Left panel (controls/metrics)
-        left_panel = tk.Frame(content_frame, bg=DARK_PRIMARY, width=330)
-        left_panel.pack(side="left", fill="y", padx=(0, 10))
+
+        # Left panel (metrics, strategy monitor)
+        left_panel = tk.Frame(content_frame, bg=DARK_PRIMARY, width=140)  # Less width
+        left_panel.pack(side="left", fill="y", padx=(0, 2), ipadx=0)
         left_panel.pack_propagate(True)
+
         metrics_frame = tk.Frame(left_panel, bg=DARK_PRIMARY)
-        metrics_frame.pack(fill="x", pady=(0, 10))
+        metrics_frame.pack(fill="x", pady=(0, 2))
         row1_frame = tk.Frame(metrics_frame, bg=DARK_PRIMARY)
-        row1_frame.pack(fill="x", pady=(0, 5))
+        row1_frame.pack(fill="x", pady=(0, 1))
         self.balance_card, self.balance_label = self.create_metric_card(
-            row1_frame, "Portfolio Balance", f"${self.bot.balance:.2f}", "Demo Account", ACCENT_EMERALD
+            row1_frame, "Portfolio", f"${self.bot.balance:.2f}", "", ACCENT_EMERALD
         )
-        self.balance_card.pack(side="left", fill="both", expand=True, padx=(0, 5))
+        self.balance_card.pack(side="left", fill="both", expand=True, padx=(0, 1))
         self.trades_card, self.trades_label = self.create_metric_card(
-            row1_frame, "Active Trades", "0", "Today", ACCENT_SAPPHIRE
+            row1_frame, "Trades", "0", "", ACCENT_SAPPHIRE
         )
-        self.trades_card.pack(side="right", fill="both", expand=True, padx=(5, 0))
+        self.trades_card.pack(side="right", fill="both", expand=True, padx=(1, 0))
         row2_frame = tk.Frame(metrics_frame, bg=DARK_PRIMARY)
         row2_frame.pack(fill="x")
         self.winrate_card, self.winrate_label = self.create_metric_card(
-            row2_frame, "Win Rate", "0.0%", "Success Ratio", ACCENT_GOLD
+            row2_frame, "Win%", "0.0%", "", ACCENT_GOLD
         )
-        self.winrate_card.pack(side="left", fill="both", expand=True, padx=(0, 5))
+        self.winrate_card.pack(side="left", fill="both", expand=True, padx=(0, 1))
         self.streak_card, self.streak_label = self.create_metric_card(
-            row2_frame, "Current Streak", "0", "Consecutive", ACCENT_PURPLE
+            row2_frame, "Streak", "0", "", ACCENT_PURPLE
         )
-        self.streak_card.pack(side="right", fill="both", expand=True, padx=(5, 0))
+        self.streak_card.pack(side="right", fill="both", expand=True, padx=(1, 0))
+
         self.create_strategy_monitor(left_panel)
-        self.create_control_panel(left_panel)
-        # Right panel (charts/feed)
+
+        # Right panel (charts, winrate, live feed)
         right_panel = tk.Frame(content_frame, bg=DARK_PRIMARY)
         right_panel.pack(side="right", fill="both", expand=True)
+
+        # Compact chart
+        def _create_performance_chart_shrink(parent):
+            chart_frame = self.create_glassmorphism_frame(parent)
+            chart_frame.pack(fill="both", expand=True, padx=4, pady=2)
+            title = tk.Label(
+                chart_frame,
+                text="PERFORMANCE",
+                bg=CARD_GLASS,
+                fg=TEXT_LUXURY,
+                font=("Segoe UI", 10, "bold")
+            )
+            title.pack(pady=(2, 2))
+            self.chart_canvas = tk.Canvas(
+                chart_frame,
+                width=200,
+                height=85,
+                bg=DARK_SECONDARY,
+                highlightthickness=0
+            )
+            self.chart_canvas.pack(pady=(0, 2), padx=5)
+            self.update_performance_chart()
+            return chart_frame
+
+        self.create_performance_chart = _create_performance_chart_shrink
         self.create_performance_chart(right_panel)
-        self.create_strategy_winrate_panel(right_panel)  # Add winrates below performance
+        self.create_strategy_winrate_panel(right_panel)
         self.update_strategy_winrates()
+
+        # Compact live feed
+        def _create_live_feed_shrink(parent):
+            feed_frame = self.create_glassmorphism_frame(parent)
+            feed_frame.pack(fill="both", expand=True, padx=4, pady=2)
+            title = tk.Label(
+                feed_frame,
+                text="LIVE FEED",
+                bg=CARD_GLASS,
+                fg=TEXT_LUXURY,
+                font=("Segoe UI", 10, "bold")
+            )
+            title.pack(pady=(2, 1))
+            self.feed_text = scrolledtext.ScrolledText(
+                feed_frame,
+                wrap=tk.WORD,
+                bg=DARK_SECONDARY,
+                fg=TEXT_LUXURY,
+                font=("Consolas", 8),
+                insertbackground=ACCENT_GOLD,
+                selectbackground=ACCENT_SAPPHIRE,
+                relief="flat",
+                bd=0,
+                height=4
+            )
+            self.feed_text.pack(fill="both", expand=True, padx=4, pady=(0, 2))
+            self.feed_text.tag_configure("signal", foreground=ACCENT_EMERALD, font=("Consolas", 8, "bold"))
+            self.feed_text.tag_configure("analysis", foreground=ACCENT_SAPPHIRE)
+            self.feed_text.tag_configure("alert", foreground=ACCENT_RUBY, font=("Consolas", 8, "bold"))
+            self.feed_text.tag_configure("timestamp", foreground=TEXT_MUTED, font=("Consolas", 7))
+            self.update_live_feed()
+            return feed_frame
+
+        self.create_live_feed = _create_live_feed_shrink
         self.create_live_feed(right_panel)
         self.update_gui_metrics()
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
