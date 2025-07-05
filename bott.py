@@ -279,9 +279,40 @@ class GTR44TradingBot:
         self.trade_hold_time = 30
         self.max_trades = 50
         self.session_start_time = 0
+        self.last_connection_check = 0
         self.setup_driver()
         if self.driver:
             self.driver.get("https://pocketoption.com/en/cabinet/demo-quick-high-low")
+    
+    def check_connection(self) -> bool:
+        """Check if internet connection and website are accessible"""
+        current_time = time.time()
+        # Only check every 30 seconds to avoid spam
+        if current_time - self.last_connection_check < 30:
+            return True
+            
+        try:
+            if not self.driver:
+                return False
+                
+            # Check if page is responsive
+            self.driver.execute_script("return document.readyState") 
+            
+            # Try to find any trading element to confirm page is loaded
+            WebDriverWait(self.driver, 5).until(
+                EC.any_of(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, ".btn-call")),
+                    EC.presence_of_element_located((By.CSS_SELECTOR, ".btn-put")),
+                    EC.presence_of_element_located((By.CLASS_NAME, "js-balance-demo"))
+                )
+            )
+            
+            self.last_connection_check = current_time
+            return True
+            
+        except Exception as e:
+            logging.error(f"Connection check failed: {e}")
+            return False
 
     def setup_driver(self) -> bool:
         try:
@@ -290,8 +321,20 @@ class GTR44TradingBot:
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-gpu')
+            options.add_argument('--disable-web-security')
+            options.add_argument('--disable-features=VizDisplayCompositor')
+            options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+            
+            # Performance optimizations
+            options.add_argument('--memory-pressure-off')
+            options.add_argument('--max_old_space_size=4096')
+            
             self.driver = uc.Chrome(use_subprocess=True, options=options)
             self.driver.set_window_size(1920, 1080)
+            
+            # Set page load timeout
+            self.driver.set_page_load_timeout(30)
+            
             logging.info("Chrome driver initialized successfully")
             return True
         except Exception as e:
@@ -301,35 +344,69 @@ class GTR44TradingBot:
     def get_balance(self) -> float:
         if not self.driver:
             return 0.0
+            
         selectors = [
             "js-balance-demo",
             "js-balance",
             "balance-value",
+            "demo-balance",
+            "user-balance"
         ]
+        
+        # Try class name selectors first
         for selector in selectors:
             try:
-                element = WebDriverWait(self.driver, 5).until(
+                element = WebDriverWait(self.driver, 3).until(
                     EC.presence_of_element_located((By.CLASS_NAME, selector))
                 )
                 text = element.text.replace('$', '').replace(',', '').strip()
-                return float(text.replace(' ', '').replace('\u202f', '').replace('\xa0', ''))
-            except (NoSuchElementException, TimeoutException, ValueError):
+                text = text.replace(' ', '').replace('\u202f', '').replace('\xa0', '')
+                if text and text.replace('.', '').isdigit():
+                    return float(text)
+            except Exception:
                 continue
+                
+        # Try CSS selectors
         css_selectors = [
             ".balance__value",
             ".js-balance-demo",
             ".js-balance",
+            "[class*='balance']",
+            "[data-test*='balance']",
+            "#balance"
         ]
+        
         for css in css_selectors:
             try:
                 element = WebDriverWait(self.driver, 2).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, css))
                 )
                 text = element.text.replace('$', '').replace(',', '').strip()
-                return float(text.replace(' ', '').replace('\u202f', '').replace('\xa0', ''))
+                text = text.replace(' ', '').replace('\u202f', '').replace('\xa0', '')
+                if text and text.replace('.', '').isdigit():
+                    return float(text)
             except Exception:
                 continue
-        logging.warning("Could not find balance element")
+                
+        # JavaScript fallback
+        try:
+            balance_script = """
+            let balanceElements = document.querySelectorAll('[class*="balance"], [data-test*="balance"]');
+            for (let elem of balanceElements) {
+                let text = elem.textContent || elem.innerText;
+                if (text && text.match(/\d+/)) {
+                    return text.replace(/[^\d.]/g, '');
+                }
+            }
+            return null;
+            """
+            result = self.driver.execute_script(balance_script)
+            if result:
+                return float(result)
+        except Exception:
+            pass
+            
+        logging.warning("Could not find balance element, using cached value")
         return self.balance
 
     def get_candle_data(self) -> List[Candle]:
@@ -408,20 +485,36 @@ class GTR44TradingBot:
 
     def execute_trade(self, decision: str) -> bool:
         if not self.driver:
+            logging.error("Driver not available for trade execution")
             return False
+            
+        # Check profit/loss limits before trading
+        if self.profit_today >= self.take_profit:
+            logging.info(f"Take profit reached: ${self.profit_today:.2f}")
+            self.bot_running = False
+            return False
+            
+        if self.profit_today <= -self.stop_loss:
+            logging.info(f"Stop loss reached: ${self.profit_today:.2f}")
+            self.bot_running = False
+            return False
+        
         if not self.set_stake(self.stake):
             logging.warning("Could not set stake. Trade not executed.")
             return False
+            
         selector_map = {
-            'call': [".btn-call"],
-            'put': [".btn-put"]
+            'call': [".btn-call", ".call-btn", "button[class*='call']"],
+            'put': [".btn-put", ".put-btn", "button[class*='put']"]
         }
+        
         for selector in selector_map[decision]:
             try:
                 button = WebDriverWait(self.driver, 5).until(
                     EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
                 )
-                button.click()
+                # Use JavaScript click as fallback
+                self.driver.execute_script("arguments[0].click();", button)
                 logging.info(f"Trade executed: {decision} (Stake: {self.stake})")
                 return True
             except TimeoutException:
@@ -429,6 +522,7 @@ class GTR44TradingBot:
             except Exception as e:
                 logging.error(f"Error when trying to click {decision} button: {e}")
                 continue
+                
         logging.warning(f"Could not find {decision} button")
         return False
 
@@ -535,6 +629,12 @@ class GTR44TradingBot:
     
         while self.bot_running:
             try:
+                # Check connection first
+                if not self.check_connection():
+                    logging.warning("Connection lost. Pausing trading for 30 seconds...")
+                    time.sleep(30)
+                    continue
+                
                 # Check session limits
                 elapsed_time = time.time() - self.session_start_time
                 trade_count = self.win_count + self.loss_count
@@ -753,12 +853,12 @@ class LuxuryTradingGUI:
             return
         
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-        messages = [
-            ("SIGNAL", f"Ã°Å¸â€œË† Momentum detected - Strength: {np.random.randint(70, 95)}%", "signal"),
-            ("ANALYSIS", f"Ã°Å¸â€œÅ  RSI Level: {np.random.randint(20, 80)} - Market volatility increasing", "analysis"),
-            ("ALERT", f"Ã¢Å¡Â¡ High-probability setup identified", "alert"),
-            ("ANALYSIS", f"Ã°Å¸â€�  Volume surge detected - {np.random.randint(120, 200)}% above average", "analysis"),
-            ("SIGNAL", f"Ã°Å¸Å½Â¯ Strategy confidence: {np.random.randint(80, 98)}%", "signal")
+                messages = [
+            ("SIGNAL", f"🎯 Momentum detected - Strength: {np.random.randint(70, 95)}%", "signal"),
+            ("ANALYSIS", f"📊 RSI Level: {np.random.randint(20, 80)} - Market volatility increasing", "analysis"),
+            ("ALERT", f"⚡ High-probability setup identified", "alert"),
+            ("ANALYSIS", f"📈 Volume surge detected - {np.random.randint(120, 200)}% above average", "analysis"),
+            ("SIGNAL", f"🎲 Strategy confidence: {np.random.randint(80, 98)}%", "signal")
         ]
         
         msg_type, content, tag = messages[np.random.randint(0, len(messages))]
@@ -931,12 +1031,12 @@ class LuxuryTradingGUI:
         button_frame.pack(fill="x", padx=3, pady=2)
         
         self.start_btn = self.create_luxury_button(
-            button_frame, "ðŸš€ LAUNCH", self.confirm_start_trading, ACCENT_EMERALD
+            button_frame, "🚀 LAUNCH", self.confirm_start_trading, ACCENT_EMERALD
         )
         self.start_btn.pack(fill="x", pady=1)
         
         self.stop_btn = self.create_luxury_button(
-            button_frame, "â�¹ STOP", self.confirm_stop_trading, ACCENT_RUBY
+            button_frame, "⏹ STOP", self.confirm_stop_trading, ACCENT_RUBY
         )
         self.stop_btn.pack(fill="x", pady=1)
         
@@ -968,7 +1068,7 @@ class LuxuryTradingGUI:
 
     def setup_luxury_gui(self):
         self.root = tk.Tk()
-        self.root.title("Ã°Å¸â€™Å½ GTR44 QUANTUM TRADING SYSTEM")
+        self.root.title("🔥 GTR44 QUANTUM TRADING SYSTEM")
         self.root.geometry("900x600")
         self.root.minsize(650, 400)
         self.root.configure(bg=DARK_PRIMARY)
@@ -989,7 +1089,7 @@ class LuxuryTradingGUI:
         
         main_title = tk.Label(
             title_frame,
-            text="Ã°Å¸â€™Å½ GTR44 QUANTUM",
+            text="🔥 GTR44 QUANTUM",
             bg=DARK_PRIMARY,
             fg=ACCENT_GOLD,
             font=("Segoe UI", 11, "bold")
@@ -1071,28 +1171,48 @@ class LuxuryTradingGUI:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def update_gui_metrics(self):
+        if not self.animation_running:
+            return
+            
         try:
-            self.bot.balance = self.bot.get_balance()
-        except Exception:
-            pass
+            # Safely update balance
+            if self.bot.driver:
+                new_balance = self.bot.get_balance()
+                if new_balance > 0:
+                    self.bot.balance = new_balance
+        except Exception as e:
+            logging.debug(f"Error updating balance: {e}")
         
-        if hasattr(self, 'balance_label'):
-            self.balance_label.config(text=f"${self.bot.balance:.2f}")
+        try:
+            if hasattr(self, 'balance_label') and self.balance_label.winfo_exists():
+                self.balance_label.config(text=f"${self.bot.balance:.2f}")
+        except tk.TclError:
+            return
         
-        if hasattr(self, 'trades_label'):
-            total_trades = self.bot.win_count + self.bot.loss_count
-            self.trades_label.config(text=str(total_trades))
+        try:
+            if hasattr(self, 'trades_label') and self.trades_label.winfo_exists():
+                total_trades = self.bot.win_count + self.bot.loss_count
+                self.trades_label.config(text=str(total_trades))
+        except tk.TclError:
+            return
         
-        if hasattr(self, 'winrate_label'):
-            total = self.bot.win_count + self.bot.loss_count
-            winrate = (self.bot.win_count / total * 100) if total > 0 else 0
-            self.winrate_label.config(text=f"{winrate:.1f}%")
+        try:
+            if hasattr(self, 'winrate_label') and self.winrate_label.winfo_exists():
+                total = self.bot.win_count + self.bot.loss_count
+                winrate = (self.bot.win_count / total * 100) if total > 0 else 0
+                self.winrate_label.config(text=f"{winrate:.1f}%")
+        except tk.TclError:
+            return
         
-        if hasattr(self, 'streak_label'):
-            streak_color = ACCENT_RUBY if self.bot.loss_streak > 3 else ACCENT_EMERALD
-            self.streak_label.config(text=str(self.bot.loss_streak), fg=streak_color)
+        try:
+            if hasattr(self, 'streak_label') and self.streak_label.winfo_exists():
+                streak_color = ACCENT_RUBY if self.bot.loss_streak > 3 else ACCENT_EMERALD
+                self.streak_label.config(text=str(self.bot.loss_streak), fg=streak_color)
+        except tk.TclError:
+            return
         
-        if self.animation_running:
+        # Schedule next update only if GUI is still running
+        if self.animation_running and hasattr(self, 'root') and self.root.winfo_exists():
             self.root.after(2000, self.update_gui_metrics)
 
     def on_capital_change(self, event=None):
