@@ -251,6 +251,41 @@ class EliteNeuralBeastQuantumFusion:
             return StrategyVote(self.name, strength, sig, [f"Momentum {change:.3%}"], {"mom": change})
         return None
 
+class MACDStrategy:
+    """MACD (12,26,9) crossover strategy"""
+    def __init__(self):
+        self.name = "MACD Strategy"
+        self.fast_period = 12
+        self.slow_period = 26
+        self.signal_period = 9
+    def _ema(self, data: List[float], period: int) -> List[float]:
+        ema = []
+        k = 2 / (period + 1)
+        for i, price in enumerate(data):
+            if i == 0:
+                ema.append(price)
+            else:
+                ema.append(price * k + ema[-1] * (1 - k))
+        return ema
+    def analyze(self, candles: List[Candle], state: MarketState) -> Optional[StrategyVote]:
+        if len(candles) < self.slow_period + self.signal_period + 5:
+            return None
+        closes = [c.close for c in candles]
+        ema_fast = self._ema(closes, self.fast_period)
+        ema_slow = self._ema(closes, self.slow_period)
+        macd_line = np.array(ema_fast) - np.array(ema_slow)
+        signal_line = self._ema(macd_line.tolist(), self.signal_period)
+        hist = macd_line[-1] - signal_line[-1]
+        prev_hist = macd_line[-2] - signal_line[-2]
+        # Cross detection
+        if prev_hist <= 0 and hist > 0 and hist > 0:
+            confidence = min(1.0, abs(hist) * 5)
+            return StrategyVote(self.name, confidence, Signal.CALL, [f"MACD Hist {hist:.5f}"], {"hist": hist})
+        if prev_hist >= 0 and hist < 0 and hist < 0:
+            confidence = min(1.0, abs(hist) * 5)
+            return StrategyVote(self.name, confidence, Signal.PUT, [f"MACD Hist {hist:.5f}"], {"hist": hist})
+        return None
+
 # ==== REGIME DETECTOR ====
 class EliteMarketRegimeDetector:
     def __init__(self):
@@ -366,6 +401,7 @@ class EliteTradingBot:
         self.strategies = {
             "rsi": EnhancedRSIStrategy(),
             "fusion": EliteNeuralBeastQuantumFusion(),
+            "macd": MACDStrategy(),
         }
 
         self.balance = 10000.0
@@ -456,20 +492,31 @@ class EliteTradingBot:
                 # analyse
                 market_state = self.regime_detector.detect(self.candles())
                 votes = []
-                for s in self.strategies.values():
-                    v = s.analyze(self.candles(), market_state)
+                for strat in self.strategies.values():
+                    v = strat.analyze(self.candles(), market_state)
                     if v:
                         votes.append(v)
+
+                # ─── PRINT VOTES ───────────────────────────────
+                if votes:
+                    print("\n📊 STRATEGY VOTES:")
+                    for vt in votes:
+                        print(f"{vt.strategy_name}: {vt.signal.name} (Conf: {vt.vote_strength:.2f})")
+
                 if not votes:
                     time.sleep(3)
                     continue
                 call_votes = [v for v in votes if v.signal == Signal.CALL]
                 put_votes = [v for v in votes if v.signal == Signal.PUT]
                 decision = None
-                if len(call_votes) >= 2 and len(call_votes) > len(put_votes):
-                    decision = Signal.CALL
-                elif len(put_votes) >= 2 and len(put_votes) > len(call_votes):
-                    decision = Signal.PUT
+                if len(call_votes) >= 2:
+                    avg_conf = sum(v.vote_strength for v in call_votes) / len(call_votes)
+                    if avg_conf >= 0.65:
+                        decision = Signal.CALL
+                elif len(put_votes) >= 2:
+                    avg_conf = sum(v.vote_strength for v in put_votes) / len(put_votes)
+                    if avg_conf >= 0.65:
+                        decision = Signal.PUT
                 if decision and time.time() - last_trade_ts > 8:
                     if self.execute_trade(decision.name.lower()):
                         last_trade_ts = time.time()
