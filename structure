@@ -1,0 +1,7 @@
+historical-strategy-tester/
+│
+├── data/                 # Historical data files
+├── strategies/           # Custom strategy scripts
+├── test_strategy.py      # Main backtest runner
+├── results/              # Output logs and stats
+└── README.md
